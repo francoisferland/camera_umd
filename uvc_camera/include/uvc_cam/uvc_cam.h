@@ -73,8 +73,8 @@ private:
   v4l2_requestbuffers rb;
   v4l2_buffer buf;
   v4l2_timecode timecode;
-  static const unsigned NUM_BUFFER = 2;
-  void *mem[NUM_BUFFER];
+  static const unsigned DEFAULT_NUM_BUFFER = 2;
+  void **mem;
   unsigned buf_length;
   unsigned char *rgb_frame, *last_yuv_frame;
 

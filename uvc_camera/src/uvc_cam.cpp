@@ -195,12 +195,13 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
 */
 
   memset(&rb, 0, sizeof(rb));
-  rb.count = NUM_BUFFER;
+  rb.count = DEFAULT_NUM_BUFFER;
   rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   rb.memory = V4L2_MEMORY_MMAP;
   if (ioctl(fd, VIDIOC_REQBUFS, &rb) < 0)
     throw std::runtime_error("unable to allocate buffers");
-  for (unsigned i = 0; i < NUM_BUFFER; i++)
+  mem = new void*[rb.count];
+  for (unsigned i = 0; i < rb.count; i++)
   {
     memset(&buf, 0, sizeof(buf));
     buf.index = i;
@@ -220,7 +221,7 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
       throw std::runtime_error("couldn't map buffer");
   }
   buf_length = buf.length;
-  for (unsigned i = 0; i < NUM_BUFFER; i++)
+  for (unsigned i = 0; i < rb.count; i++)
   {
     memset(&buf, 0, sizeof(buf));
     buf.index = i;
@@ -246,7 +247,7 @@ Cam::~Cam()
   int type = V4L2_BUF_TYPE_VIDEO_CAPTURE, ret;
   if ((ret = ioctl(fd, VIDIOC_STREAMOFF, &type)) < 0)
     perror("VIDIOC_STREAMOFF");
-  for (unsigned i = 0; i < NUM_BUFFER; i++)
+  for (unsigned i = 0; i < rb.count; i++)
     if (munmap(mem[i], buf_length) < 0)
       perror("failed to unmap buffer");
   close(fd);
@@ -256,6 +257,8 @@ Cam::~Cam()
     delete[] last_yuv_frame;
   }
   last_yuv_frame = rgb_frame = NULL;
+
+  delete[] mem;
 }
 
 void Cam::enumerate()
@@ -436,7 +439,7 @@ int Cam::grab(unsigned char **frame, uint32_t &bytes_used)
 
 void Cam::release(unsigned buf_idx)
 {
-  if (buf_idx < NUM_BUFFER)
+  if (buf_idx < rb.count)
     if (ioctl(fd, VIDIOC_QBUF, &buf) < 0)
       throw std::runtime_error("couldn't requeue buffer");
 }
